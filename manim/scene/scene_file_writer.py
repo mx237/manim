@@ -7,6 +7,7 @@ __all__ = ["SceneFileWriter"]
 import json
 import shutil
 from fractions import Fraction
+from packaging.version import Version
 from pathlib import Path
 from queue import Queue
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
@@ -538,7 +539,7 @@ class SceneFileWriter:
 
         fps = to_av_frame_rate(config.frame_rate)
 
-        partial_movie_file_codec = "libx264"
+        partial_movie_file_codec = config.ffmpeg_vcodec if config.ffmpeg_vcodec else "libx264"
         partial_movie_file_pix_fmt = "yuv420p"
         av_options = {
             "an": "1",  # ffmpeg: -an, no audio
@@ -546,14 +547,17 @@ class SceneFileWriter:
         }
 
         if config.movie_file_extension == ".webm":
-            partial_movie_file_codec = "libvpx-vp9"
+            partial_movie_file_codec = config.ffmpeg_vcodec if config.ffmpeg_vcodec else "libvpx-vp9"
             av_options["-auto-alt-ref"] = "1"
             if config.transparent:
                 partial_movie_file_pix_fmt = "yuva420p"
 
         elif config.transparent:
-            partial_movie_file_codec = "qtrle"
+            partial_movie_file_codec = config.ffmpeg_vcodec if config.ffmpeg_vcodec else "qtrle"
             partial_movie_file_pix_fmt = "argb"
+
+        if config.ffmpeg_video_encoder:
+            av_options.update(config.ffmpeg_video_encoder)
 
         with av.open(file_path, mode="w") as video_container:
             stream = video_container.add_stream(
@@ -646,10 +650,21 @@ class SceneFileWriter:
         output_container.metadata["comment"] = (
             f"Rendered with Manim Community v{__version__}"
         )
-        output_stream = output_container.add_stream(
-            codec_name="gif" if create_gif else None,
-            template=partial_movies_stream if not create_gif else None,
-        )
+        codec_name = "gif" if create_gif else config.ffmpeg_vcodec if config.ffmpeg_vcodec else None
+        if Version(av.__version__) >= Version("14.0.0"):
+            if codec_name:
+                output_stream = output_container.add_stream(
+                    codec_name=codec_name
+                )
+            else:
+                output_stream = output_container.add_stream_from_template(
+                    template=partial_movies_stream
+                )
+        else:
+            output_stream = output_container.add_stream(
+                codec_name=codec_name if codec_name else None,
+                template=partial_movies_stream if not codec_name else None,
+            )
         if config.transparent and config.movie_file_extension == ".webm":
             output_stream.pix_fmt = "yuva420p"
         if create_gif:
@@ -789,8 +804,15 @@ class SceneFileWriter:
                 output_container = av.open(
                     str(temp_file_path), mode="w", options=av_options
                 )
-                output_video_stream = output_container.add_stream(template=video_stream)
-                output_audio_stream = output_container.add_stream(template=audio_stream)
+                if Version(av.__version__) >= Version("14.0.0"):
+                    if config.ffmpeg_vcodec:
+                        output_video_stream = output_container.add_stream(codec_name=config.ffmpeg_vcodec)
+                    else:
+                        output_video_stream = output_container.add_stream_from_template(template=video_stream)
+                    output_audio_stream = output_container.add_stream_from_template(template=audio_stream)
+                else:
+                    output_video_stream = output_container.add_stream(template=video_stream)
+                    output_audio_stream = output_container.add_stream(template=audio_stream)
 
                 for packet in video_input.demux(video_stream):
                     # We need to skip the "flushing" packets that `demux` generates.

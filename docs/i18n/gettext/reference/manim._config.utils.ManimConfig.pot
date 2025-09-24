@@ -211,6 +211,11 @@ msgid "Verbosity level of ffmpeg (no flag)."
 msgstr ""
 
 #: ../../../manim/_config/utils.py:docstring of manim._config.utils.ManimConfig.aspect_ratio:1:<autosummary>:1
+#: ../../../manim/_config/utils.py:docstring of manim._config.utils.ManimConfig.ffmpeg_vcodec:1
+msgid "Video codec used by ffmpeg (no flag)."
+msgstr ""
+
+#: ../../../manim/_config/utils.py:docstring of manim._config.utils.ManimConfig.aspect_ratio:1:<autosummary>:1
 #: ../../../manim/_config/utils.py:docstring of manim._config.utils.ManimConfig.flush_cache:1
 msgid "Whether to delete all the cached partial movie files."
 msgstr ""

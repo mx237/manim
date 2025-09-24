@@ -269,6 +269,7 @@ class ManimConfig(MutableMapping):
         "dry_run",
         "enable_wireframe",
         "ffmpeg_loglevel",
+        "ffmpeg_vcodec",
         "format",
         "flush_cache",
         "frame_height",
@@ -682,6 +683,15 @@ class ManimConfig(MutableMapping):
         if val:
             self.ffmpeg_loglevel = val
 
+        val = parser["ffmpeg"].get("vcodec")
+        if val:
+            self.ffmpeg_vcodec = val
+
+        if "ffmpeg_video_encoder" in parser:
+            val = parser["ffmpeg_video_encoder"]
+            if val:
+                self.ffmpeg_video_encoder = parser.items("ffmpeg_video_encoder")
+
         try:
             val = parser["jupyter"].getboolean("media_embed")
         except ValueError:
@@ -1072,6 +1082,24 @@ class ManimConfig(MutableMapping):
             ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         )
         logging.getLogger("libav").setLevel(self.ffmpeg_loglevel)
+
+    @property
+    def ffmpeg_vcodec(self) -> str:
+        """Video codec to be used by ffmpeg (no flag)."""
+        return self._d["ffmpeg_vcodec"]
+
+    @ffmpeg_vcodec.setter
+    def ffmpeg_vcodec(self, val: str) -> None:
+        self._set_str("ffmpeg_vcodec", val)
+
+    @property
+    def ffmpeg_video_encoder(self) -> dict[str, str]:
+        """Additional ffmpeg video encoder flags (no flag)."""
+        return self._d["ffmpeg_video_encoder"]
+    
+    @ffmpeg_video_encoder.setter
+    def ffmpeg_video_encoder(self, val: list[tuple[str, str]]) -> None:
+        self._d["ffmpeg_video_encoder"] = dict(val)
 
     @property
     def media_embed(self) -> bool:
